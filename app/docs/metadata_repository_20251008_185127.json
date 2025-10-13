@@ -1,0 +1,807 @@
+{
+  "metadata_repository": {
+    "generated_at": "2025-10-08T18:51:27.772362",
+    "version": "1.0",
+    "description": "Complete metadata repository for Online Retail Sales Data Platform"
+  },
+  "data_dictionary": {
+    "generated_at": "2025-10-08T15:51:27.772878",
+    "schema": "retail_dw",
+    "tables": {
+      "data_lineage": {
+        "name": "data_lineage",
+        "description": "ETL job execution tracking and audit trail",
+        "columns": [
+          {
+            "name": "lineage_id",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "Column: lineage_id"
+          },
+          {
+            "name": "source_system",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: source_system"
+          },
+          {
+            "name": "source_table",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: source_table"
+          },
+          {
+            "name": "source_file",
+            "type": "character varying",
+            "nullable": true,
+            "default": null,
+            "description": "Column: source_file"
+          },
+          {
+            "name": "target_table",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: target_table"
+          },
+          {
+            "name": "etl_job_name",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: etl_job_name"
+          },
+          {
+            "name": "batch_id",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: batch_id"
+          },
+          {
+            "name": "records_processed",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "Column: records_processed"
+          },
+          {
+            "name": "records_inserted",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "Column: records_inserted"
+          },
+          {
+            "name": "records_updated",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "Column: records_updated"
+          },
+          {
+            "name": "records_rejected",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "Column: records_rejected"
+          },
+          {
+            "name": "start_time",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: start_time"
+          },
+          {
+            "name": "end_time",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: end_time"
+          },
+          {
+            "name": "duration_seconds",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: duration_seconds"
+          },
+          {
+            "name": "status",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: status"
+          },
+          {
+            "name": "error_message",
+            "type": "character varying",
+            "nullable": true,
+            "default": null,
+            "description": "Column: error_message"
+          },
+          {
+            "name": "job_metadata",
+            "type": "jsonb",
+            "nullable": true,
+            "default": null,
+            "description": "Column: job_metadata"
+          }
+        ]
+      },
+      "data_quality_metrics": {
+        "name": "data_quality_metrics",
+        "description": "Data quality measurements and monitoring",
+        "columns": [
+          {
+            "name": "metric_id",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "Column: metric_id"
+          },
+          {
+            "name": "table_name",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: table_name"
+          },
+          {
+            "name": "column_name",
+            "type": "character varying",
+            "nullable": true,
+            "default": null,
+            "description": "Column: column_name"
+          },
+          {
+            "name": "metric_name",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: metric_name"
+          },
+          {
+            "name": "metric_value",
+            "type": "numeric",
+            "nullable": false,
+            "default": null,
+            "description": "Column: metric_value"
+          },
+          {
+            "name": "threshold_value",
+            "type": "numeric",
+            "nullable": true,
+            "default": null,
+            "description": "Column: threshold_value"
+          },
+          {
+            "name": "is_threshold_met",
+            "type": "boolean",
+            "nullable": true,
+            "default": null,
+            "description": "Column: is_threshold_met"
+          },
+          {
+            "name": "batch_id",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: batch_id"
+          },
+          {
+            "name": "measured_at",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: measured_at"
+          },
+          {
+            "name": "details",
+            "type": "jsonb",
+            "nullable": true,
+            "default": null,
+            "description": "Column: details"
+          }
+        ]
+      },
+      "dim_customer": {
+        "name": "dim_customer",
+        "description": "Customer dimension with SCD Type 2 for tracking changes",
+        "columns": [
+          {
+            "name": "customer_key",
+            "type": "bigint",
+            "nullable": false,
+            "default": "nextval('dim_customer_customer_key_seq'::regclass)",
+            "description": "Surrogate primary key"
+          },
+          {
+            "name": "customer_id",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Business customer identifier"
+          },
+          {
+            "name": "country",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Customer country"
+          },
+          {
+            "name": "effective_date",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: effective_date"
+          },
+          {
+            "name": "expiry_date",
+            "type": "timestamp without time zone",
+            "nullable": true,
+            "default": null,
+            "description": "Column: expiry_date"
+          },
+          {
+            "name": "is_current",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "Current record flag for SCD Type 2"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: created_at"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: updated_at"
+          },
+          {
+            "name": "data_source",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: data_source"
+          }
+        ]
+      },
+      "dim_date": {
+        "name": "dim_date",
+        "description": "Date dimension for time-based analysis",
+        "columns": [
+          {
+            "name": "date_key",
+            "type": "integer",
+            "nullable": false,
+            "default": "nextval('dim_date_date_key_seq'::regclass)",
+            "description": "Column: date_key"
+          },
+          {
+            "name": "date_value",
+            "type": "date",
+            "nullable": false,
+            "default": null,
+            "description": "Column: date_value"
+          },
+          {
+            "name": "year",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: year"
+          },
+          {
+            "name": "quarter",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: quarter"
+          },
+          {
+            "name": "month",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: month"
+          },
+          {
+            "name": "week",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: week"
+          },
+          {
+            "name": "day_of_year",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: day_of_year"
+          },
+          {
+            "name": "day_of_month",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: day_of_month"
+          },
+          {
+            "name": "day_of_week",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Column: day_of_week"
+          },
+          {
+            "name": "month_name",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: month_name"
+          },
+          {
+            "name": "day_name",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: day_name"
+          },
+          {
+            "name": "quarter_name",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: quarter_name"
+          },
+          {
+            "name": "is_weekend",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "Column: is_weekend"
+          },
+          {
+            "name": "is_holiday",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "Column: is_holiday"
+          }
+        ]
+      },
+      "dim_product": {
+        "name": "dim_product",
+        "description": "Product master data with SCD Type 1 implementation",
+        "columns": [
+          {
+            "name": "product_key",
+            "type": "bigint",
+            "nullable": false,
+            "default": "nextval('dim_product_product_key_seq'::regclass)",
+            "description": "Surrogate primary key"
+          },
+          {
+            "name": "stock_code",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Business product identifier"
+          },
+          {
+            "name": "description",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Product description"
+          },
+          {
+            "name": "category",
+            "type": "character varying",
+            "nullable": true,
+            "default": null,
+            "description": "Column: category"
+          },
+          {
+            "name": "subcategory",
+            "type": "character varying",
+            "nullable": true,
+            "default": null,
+            "description": "Column: subcategory"
+          },
+          {
+            "name": "is_active",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "Column: is_active"
+          },
+          {
+            "name": "is_gift",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "Column: is_gift"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: created_at"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: updated_at"
+          },
+          {
+            "name": "data_source",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: data_source"
+          }
+        ]
+      },
+      "fact_sales": {
+        "name": "fact_sales",
+        "description": "Core sales transactions with foreign keys to dimension tables",
+        "columns": [
+          {
+            "name": "sales_key",
+            "type": "bigint",
+            "nullable": false,
+            "default": "nextval('fact_sales_sales_key_seq'::regclass)",
+            "description": "Surrogate primary key"
+          },
+          {
+            "name": "date_key",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Foreign key to dim_date"
+          },
+          {
+            "name": "customer_key",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "Foreign key to dim_customer"
+          },
+          {
+            "name": "product_key",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "Foreign key to dim_product"
+          },
+          {
+            "name": "invoice_no",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "Business invoice number"
+          },
+          {
+            "name": "transaction_type",
+            "type": "USER-DEFINED",
+            "nullable": false,
+            "default": null,
+            "description": "SALE or RETURN"
+          },
+          {
+            "name": "quantity",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "Number of items sold"
+          },
+          {
+            "name": "unit_price",
+            "type": "numeric",
+            "nullable": false,
+            "default": null,
+            "description": "Price per unit"
+          },
+          {
+            "name": "line_total",
+            "type": "numeric",
+            "nullable": false,
+            "default": null,
+            "description": "Total line amount (quantity * unit_price)"
+          },
+          {
+            "name": "transaction_datetime",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: transaction_datetime"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp without time zone",
+            "nullable": false,
+            "default": null,
+            "description": "Column: created_at"
+          },
+          {
+            "name": "batch_id",
+            "type": "character varying",
+            "nullable": true,
+            "default": null,
+            "description": "ETL batch identifier"
+          },
+          {
+            "name": "data_source",
+            "type": "character varying",
+            "nullable": false,
+            "default": null,
+            "description": "Column: data_source"
+          }
+        ]
+      }
+    },
+    "relationships": [
+      {
+        "child_table": "fact_sales",
+        "child_column": "date_key",
+        "parent_table": "dim_date",
+        "parent_column": "date_key"
+      },
+      {
+        "child_table": "fact_sales",
+        "child_column": "customer_key",
+        "parent_table": "dim_customer",
+        "parent_column": "customer_key"
+      },
+      {
+        "child_table": "fact_sales",
+        "child_column": "product_key",
+        "parent_table": "dim_product",
+        "parent_column": "product_key"
+      }
+    ],
+    "table_sizes": [
+      {
+        "table_name": "fact_sales",
+        "table_size": "208 kB",
+        "estimated_rows": 122,
+        "total_inserts": 122,
+        "total_updates": 0,
+        "total_deletes": 0
+      },
+      {
+        "table_name": "data_lineage",
+        "table_size": "96 kB",
+        "estimated_rows": 1,
+        "total_inserts": 1,
+        "total_updates": 1,
+        "total_deletes": 0
+      },
+      {
+        "table_name": "dim_product",
+        "table_size": "96 kB",
+        "estimated_rows": 116,
+        "total_inserts": 116,
+        "total_updates": 0,
+        "total_deletes": 0
+      },
+      {
+        "table_name": "data_quality_metrics",
+        "table_size": "80 kB",
+        "estimated_rows": 7,
+        "total_inserts": 7,
+        "total_updates": 0,
+        "total_deletes": 0
+      },
+      {
+        "table_name": "dim_customer",
+        "table_size": "72 kB",
+        "estimated_rows": 6,
+        "total_inserts": 6,
+        "total_updates": 0,
+        "total_deletes": 0
+      },
+      {
+        "table_name": "dim_date",
+        "table_size": "56 kB",
+        "estimated_rows": 1,
+        "total_inserts": 1,
+        "total_updates": 0,
+        "total_deletes": 0
+      }
+    ]
+  },
+  "data_sources": {
+    "sources": {
+      "online_retail_csv": {
+        "type": "CSV File",
+        "location": "data/online_retail.csv",
+        "description": "Historical online retail sales transactions",
+        "format": "CSV",
+        "size_mb": 0.01,
+        "columns": [
+          "InvoiceNo",
+          "StockCode",
+          "Description",
+          "Quantity",
+          "InvoiceDate",
+          "UnitPrice",
+          "CustomerID",
+          "Country"
+        ],
+        "update_frequency": "Daily",
+        "owner": "Data Engineering Team",
+        "last_updated": "2025-10-08T18:51:27.864650"
+      }
+    },
+    "external_systems": {
+      "retail_erp": {
+        "type": "ERP System",
+        "description": "Source system for sales transactions",
+        "connection_type": "File Export",
+        "data_freshness": "24 hours"
+      }
+    }
+  },
+  "transformations": {
+    "transformations": {
+      "data_cleaning": {
+        "process": "Remove invalid records and standardize formats",
+        "rules": [
+          "Remove rows with negative quantities (returns handled separately)",
+          "Remove rows with zero or negative unit prices",
+          "Remove rows with missing customer IDs",
+          "Standardize date formats to ISO 8601",
+          "Trim whitespace from text fields"
+        ],
+        "implemented_in": "etl/cleaning.py"
+      },
+      "dimension_creation": {
+        "process": "Extract and create dimension tables",
+        "dimensions": {
+          "dim_customer": {
+            "source_columns": [
+              "CustomerID",
+              "Country"
+            ],
+            "scd_type": "Type 2",
+            "business_key": "customer_id"
+          },
+          "dim_product": {
+            "source_columns": [
+              "StockCode",
+              "Description"
+            ],
+            "scd_type": "Type 1",
+            "business_key": "stock_code"
+          },
+          "dim_date": {
+            "source_columns": [
+              "InvoiceDate"
+            ],
+            "generated_attributes": [
+              "year",
+              "month",
+              "quarter",
+              "day_of_week"
+            ]
+          }
+        },
+        "implemented_in": "etl/transformation.py"
+      },
+      "fact_table_creation": {
+        "process": "Create fact table with foreign key lookups",
+        "measures": [
+          "quantity",
+          "unit_price",
+          "line_total"
+        ],
+        "dimensions": [
+          "date_key",
+          "customer_key",
+          "product_key"
+        ],
+        "grain": "One row per invoice line item",
+        "implemented_in": "etl/transformation.py"
+      }
+    }
+  },
+  "storage_locations": {
+    "storage": {
+      "database": {
+        "type": "PostgreSQL",
+        "host": "localhost",
+        "database": "ors",
+        "schema": "retail_dw",
+        "connection_info": "See development.yaml for connection details"
+      },
+      "tables": {
+        "fact_sales": {
+          "type": "Fact Table",
+          "location": "retail_dw.fact_sales",
+          "purpose": "Store sales transaction facts",
+          "partitioning": "None (could be partitioned by date)",
+          "indexes": [
+            "sales_key (PK)",
+            "date_key",
+            "customer_key",
+            "product_key"
+          ],
+          "estimated_size": "Variable based on data volume"
+        },
+        "dim_customer": {
+          "type": "Dimension Table",
+          "location": "retail_dw.dim_customer",
+          "purpose": "Customer master data with SCD Type 2",
+          "scd_type": "Type 2",
+          "indexes": [
+            "customer_key (PK)",
+            "customer_id"
+          ]
+        },
+        "dim_product": {
+          "type": "Dimension Table",
+          "location": "retail_dw.dim_product",
+          "purpose": "Product master data",
+          "scd_type": "Type 1",
+          "indexes": [
+            "product_key (PK)",
+            "stock_code"
+          ]
+        },
+        "dim_date": {
+          "type": "Dimension Table",
+          "location": "retail_dw.dim_date",
+          "purpose": "Date dimension for time-based analysis",
+          "indexes": [
+            "date_key (PK)",
+            "date_value"
+          ]
+        }
+      },
+      "audit_tables": {
+        "data_lineage": {
+          "location": "retail_dw.data_lineage",
+          "purpose": "Track ETL job execution and data lineage"
+        },
+        "data_quality_metrics": {
+          "location": "retail_dw.data_quality_metrics",
+          "purpose": "Store data quality measurements"
+        }
+      }
+    }
+  },
+  "data_lineage": {
+    "recent_jobs": [
+      {
+        "lineage_id": "cb5ad809-637a-4de3-940b-4299df850a01",
+        "source_file": "data/online_retail.csv",
+        "target_table": "fact_sales",
+        "etl_job_name": "retail_etl_20251008_183820",
+        "batch_id": "70bb5139-67cb-4152-b967-b044c2685edc",
+        "records_processed": 134,
+        "records_inserted": 122,
+        "start_time": "2025-10-08T15:38:20.093499",
+        "end_time": "2025-10-08T15:38:22.826345",
+        "status": "SUCCESS"
+      }
+    ],
+    "tracking_method": "Automated via ETL pipeline"
+  }
+}
