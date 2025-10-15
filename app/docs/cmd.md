@@ -1,467 +1,489 @@
-# 🎛️ **Command Reference Guide**
+# 📋 **CLI Commands Reference Guide**
 
-Complete reference for all CLI commands in the Retail Data Platform.
+## 🎯 **Quick Start Commands**
 
-## Setup & Testing Commands
-
-### Database Setup
 ```bash
-# Initialize complete database schema
-python main.py setup
-# Creates: schema, tables, indexes, views, versioning system
-
-# Fresh start (⚠️ DESTROYS ALL DATA)
-python main.py setup --drop-existing
-# Drops all tables and recreates from scratch
-
-# Setup with custom configuration
-python main.py setup --config production.yaml
-# Uses specific configuration file
-```
-
-### System Testing
-```bash
-# Basic system health check
-python main.py test
-# ✅ Database connection successful
-# ✅ Schema validation passed
-# ✅ All systems operational
-
-# Detailed diagnostics
-python main.py test --verbose
-# Shows detailed connection info, table counts, index status
-
-# Test specific component
-python main.py test --component database
-python main.py test --component etl
-python main.py test --component quality
-```
-
-## ETL Commands
-
-### Basic ETL Operations
-```bash
-# Process CSV file
-python main.py etl --source data/online_retail.csv
-# Standard ETL: Extract → Clean → Transform → Load
-
-# Named ETL job
-python main.py etl --source data/online_retail.csv --job-name "daily_import"
-# Creates job with custom name for tracking
-
-# Custom batch size
-python main.py etl --source data/online_retail.csv --batch-size 2000
-# Process in larger/smaller batches (default: 1000)
-
-# ETL with validation
-python main.py etl --source data/online_retail.csv --validate
-# Includes comprehensive quality checks
-```
-
-### Advanced ETL Options
-```bash
-# Dry run (validation only)
-python main.py etl --source data/online_retail.csv --dry-run
-# Validates data without loading to database
-
-# ETL with custom quality threshold
-python main.py etl --source data/online_retail.csv --quality-threshold 0.98
-# Fails if quality below 98%
-
-# Parallel processing (if enabled)
-python main.py etl --source data/online_retail.csv --parallel
-# Uses multiple threads for processing
-
-# Resume from checkpoint
-python main.py etl --source data/online_retail.csv --resume --checkpoint-id cp_12345
-# Resume interrupted job from last checkpoint
-```
-
-## Data Quality Commands
-
-### Quality Checks
-```bash
-# Check all tables
-python main.py quality check
-# Runs quality rules on all monitored tables
-
-# Check specific table
-python main.py quality check --table fact_sales
-# Detailed quality analysis for single table
-
-# Check with date filter
-python main.py quality check --table fact_sales --since "2024-10-01"
-# Only check data from specified date
-
-# Verbose quality output
-python main.py quality check --table fact_sales --verbose
-# Shows detailed metrics and failing records
-```
-
-### Quality Dashboard & Reporting
-```bash
-# Interactive quality dashboard
-python main.py quality dashboard
-# Opens web-based quality monitoring dashboard
-
-# Generate quality report
-python main.py quality report --days 7
-# HTML report for last 7 days
-
-# Export quality metrics
-python main.py quality export --format json --output metrics.json
-# Export to JSON, CSV, or Excel
-
-# Quality summary
-python main.py quality summary
-# Quick overview of current quality status
-```
-
-### Quality Rules Management
-```bash
-# Show current quality rules
-python main.py quality rules --show
-# Display all configured quality thresholds
-
-# Set quality thresholds
-python main.py quality rules --set completeness=0.95 validity=0.90
-# Update quality thresholds
-
-# Add custom quality rule
-python main.py quality rules --add --table fact_sales --rule "quantity > 0" --threshold 0.95
-# Add business-specific validation rule
-
-# Remove quality rule
-python main.py quality rules --remove --table fact_sales --rule-name "custom_quantity_check"
-# Remove specified quality rule
-```
-
-### Quality Alerts
-```bash
-# Configure quality alerts
-python main.py quality alerts --set completeness=0.95 validity=0.90
-# Set alert thresholds
-
-# Test alert system
-python main.py quality alerts --test
-# Send test alerts to verify configuration
-
-# View alert history
-python main.py quality alerts --history --days 7
-# Show recent quality alerts
-
-# Enable/disable alerts
-python main.py quality alerts --enable
-python main.py quality alerts --disable
-```
-
-## Query Commands
-
-### Basic Querying
-```bash
-# Query table with limit
-python main.py query --table fact_sales --limit 10
-# Show first 10 records from fact_sales
-
-# Query with WHERE clause
-python main.py query --table dim_customer --where "country='United Kingdom'"
-# Filter records by condition
-
-# Custom SQL query
-python main.py query --sql "SELECT COUNT(*) FROM retail_dw.fact_sales"
-# Execute custom SQL statement
-
-# Export query results
-python main.py query --table fact_sales --limit 1000 --output sales_data.csv
-# Export results to CSV file
-```
-
-### Advanced Querying
-```bash
-# Query with joins
-python main.py query --sql "
-SELECT c.country, COUNT(*) as customers
-FROM retail_dw.dim_customer c
-GROUP BY c.country
-ORDER BY customers DESC
-LIMIT 10"
-
-# Query specific columns
-python main.py query --table fact_sales --columns "invoice_no,quantity,unit_price,line_total" --limit 5
-
-# Query with date range
-python main.py query --table fact_sales --where "transaction_datetime >= '2010-12-01'" --limit 10
-```
-
-## Monitoring Commands
-
-### Job Monitoring
-```bash
-# View recent ETL jobs
-python main.py monitor --jobs 5
-# Show last 5 ETL job executions
-
-# Monitor specific job
-python main.py monitor --job-id etl_20241008_123456
-# Detailed info for specific job
-
-# Monitor with verbose output
-python main.py monitor --jobs 10 --verbose
-# Detailed job information including metrics
-
-# Real-time job monitoring
-python main.py monitor --follow
-# Live monitoring of running jobs
-```
-
-### System Monitoring
-```bash
-# Database connection monitoring
-python main.py monitor --connections
-# Show active database connections
-
-# Performance monitoring
-python main.py monitor --performance
-# CPU, memory, and database performance
-
-# Error monitoring
-python main.py monitor --errors --days 7
-# Show errors from last 7 days
-```
-
-## Performance Commands
-
-### Performance Analysis
-```bash
-# Full performance audit
-python main.py performance audit
-# Comprehensive performance analysis
-
-# Query performance analysis
-python main.py performance queries
-# Analyze slow queries and optimization opportunities
-
-# Index recommendations
-python main.py performance indexes --recommend
-# Suggest new indexes for better performance
-
-# Cache statistics
-python main.py performance cache --stats
-# Show cache hit rates and efficiency
-```
-
-### Performance Optimization
-```bash
-# Rebuild indexes
-python main.py performance indexes --rebuild
-# Rebuild all database indexes
-
-# Clear query cache
-python main.py performance cache --clear
-# Clear application query cache
-
-# Database maintenance
-python main.py performance maintenance
-# Run database maintenance tasks (VACUUM, ANALYZE)
-```
-
-## Scheduling Commands
-
-### Schedule Management
-```bash
-# List all scheduled jobs
-python main.py schedule list
-# Show all configured schedules
-
-# Add new scheduled job
-python main.py schedule add --name daily_etl --cron "0 2 * * *" --command "etl --source data/online_retail.csv"
-# Schedule daily ETL at 2 AM
-
-# Remove scheduled job
-python main.py schedule remove --name daily_etl
-# Remove specified schedule
-
-# Enable/disable schedule
-python main.py schedule enable --name daily_etl
-python main.py schedule disable --name daily_etl
-```
-
-### Schedule Operations
-```bash
-# Start scheduler daemon
-python main.py schedule start
-# Start background scheduler
-
-# Stop scheduler daemon
-python main.py schedule stop
-# Stop background scheduler
-
-# Run scheduled job immediately
-python main.py schedule run --name daily_etl
-# Execute scheduled job on-demand
-
-# View schedule history
-python main.py schedule history --name daily_etl --days 7
-# Show execution history for scheduled job
-```
-
-## Version Management Commands
-
-### Version Information
-```bash
-# List all data versions
-python main.py versions list
-# Show all ETL job versions and status
-
-# Show current active version
-python main.py versions current
-# Display current data version info
-
-# Show version details
-python main.py versions show --version-id 123
-# Detailed info for specific version
-```
-
-### Version Operations
-```bash
-# Create new version
-python main.py versions create --name "Q4_2024_data" --description "Q4 sales data import"
-# Create new data version
-
-# Compare versions
-python main.py versions compare --version1 v1.0 --version2 v1.1
-# Compare data between versions
-
-# Rollback to version
-python main.py versions rollback --version-id 122
-# Rollback to previous version (⚠️ destructive)
-```
-
-### Partitioning Commands
-```bash
-# Check partitioning status
-python main.py versions partitions
-# Show table partitioning information
-
-# Enable partitioning (requires --drop-existing)
-python main.py setup --drop-existing  # Then partitioning is enabled
-```
-
-## Metadata Commands
-
-### Data Catalog
-```bash
-# Show data dictionary
-python main.py metadata dictionary
-# Complete table and column documentation
-
-# Export metadata
-python main.py metadata export --format json --output metadata.json
-# Export complete metadata catalog
-
-# Show data lineage
-python main.py metadata lineage --table fact_sales
-# Data lineage for specific table
-
-# Search metadata
-python main.py metadata search --term "customer"
-# Search tables/columns containing term
-```
-
-### Metadata Management
-```bash
-# Update table documentation
-python main.py metadata update --table fact_sales --description "Central sales transactions"
-
-# Add column documentation
-python main.py metadata update --table fact_sales --column quantity --description "Number of items sold"
-
-# Generate documentation
-python main.py metadata generate-docs --output docs/data_dictionary.md
-```
-
-## Utility Commands
-
-### Data Import/Export
-```bash
-# Export table data
-python main.py export --table fact_sales --format csv --output sales_export.csv
-# Export table to CSV
-
-# Import data from backup
-python main.py import --table fact_sales --source backup_sales.csv
-# Import data from CSV file
-
-# Backup database
-python main.py backup --output backup_20241008.sql
-# Create full database backup
-```
-
-### Configuration Commands
-```bash
-# Show current configuration
-python main.py config show
-# Display current configuration values
-
-# Validate configuration
-python main.py config validate
-# Check configuration file syntax
-
-# Set configuration value
-python main.py config set --key etl.batch_size --value 2000
-# Update configuration value
-```
-
-## Command Categories Summary
-
-| Category | Commands | Purpose |
-|----------|----------|---------|
-| **Setup** | `setup`, `test` | Database initialization and testing |
-| **ETL** | `etl` | Data extraction, transformation, loading |
-| **Quality** | `quality check`, `quality dashboard`, `quality rules` | Data quality monitoring |
-| **Query** | `query` | Data querying and exploration |
-| **Monitor** | `monitor` | Job and system monitoring |
-| **Performance** | `performance audit`, `performance indexes` | Performance optimization |
-| **Schedule** | `schedule list`, `schedule add`, `schedule start` | Job scheduling |
-| **Versions** | `versions list`, `versions current`, `versions partitions` | Version management |
-| **Metadata** | `metadata dictionary`, `metadata lineage` | Data catalog |
-
-## Getting Help
-
-### Command Help
-```bash
-# General help
-python main.py --help
-# Show all available commands
-
-# Command-specific help
-python main.py etl --help
-python main.py quality --help
-python main.py query --help
-
-# Subcommand help
-python main.py quality check --help
-python main.py schedule add --help
-```
-
-### Common Usage Patterns
-```bash
-# Daily workflow
-python main.py etl --source data/daily_sales.csv
-python main.py quality check
-python main.py monitor --jobs 1
-
-# Weekly analysis
-python main.py quality report --days 7
-python main.py performance audit
-python main.py versions list
-
-# Troubleshooting
-python main.py test --verbose
-python main.py monitor --errors --days 1
-python main.py performance queries
+# Complete setup from scratch
+python main.py setup                    # Initialize database schema
+python main.py test                     # Verify system connectivity
+python main.py etl --source data/online_retail.csv  # Run ETL pipeline
+
+# Daily operations
+python main.py quality check            # Check data quality
+python main.py performance analyze      # Performance analysis
+python main.py versions list            # View data versions
 ```
 
 ---
 
-**All commands support `--help` flag for detailed usage information. Use `python main.py --help` to see all available commands.**
+## 🏗️ **System Management**
+
+### **setup** - Database Initialization
+```bash
+# Basic setup (creates schema, tables, indexes)
+python main.py setup
+
+# Destructive setup (drops existing data)
+python main.py setup --drop-existing
+# ⚠️  WARNING: This deletes ALL existing data!
+```
+
+**What it does:**
+- Creates `retail_dw` schema
+- Sets up dimensional tables (customers, products, dates)
+- Creates fact table with partitioning
+- Establishes indexes and constraints
+- Initializes metadata tables
+
+### **test** - System Health Check
+```bash
+# Test all system components
+python main.py test
+```
+
+**Validates:**
+- Database connectivity
+- Configuration loading
+- Schema existence
+- Connection pool health
+
+---
+
+## 🔄 **ETL Operations**
+
+### **etl** - Extract, Transform, Load
+```bash
+# Basic ETL execution
+python main.py etl --source data/online_retail.csv
+
+# Custom job name and batch size
+python main.py etl \
+  --source data/online_retail.csv \
+  --job-name "monthly_import" \
+  --batch-size 2000
+
+# Large file processing (smaller batches)
+python main.py etl \
+  --source data/large_file.csv \
+  --batch-size 500
+```
+
+**Process Flow:**
+1. **Extract**: Read CSV in configurable chunks
+2. **Validate**: Check data format and structure
+3. **Clean**: Remove duplicates, handle missing values, ensure positive values
+4. **Transform**: Apply business rules, create dimensional lookups
+5. **Load**: Insert into warehouse with transaction integrity
+6. **Monitor**: Record quality metrics and lineage
+
+**Output Example:**
+```
+Starting ETL job: retail_etl_20241015_143022
+Job ID: etl_20241015_143022
+Status: SUCCESS
+Records Loaded: 541909
+Duration: 3.45s
+Version: v1.2
+Version ID: 12
+```
+
+---
+
+## 📅 **Scheduling Commands**
+
+### **schedule** - Job Automation
+
+#### **Add Daily Job**
+```bash
+# Schedule daily ETL at 2:00 AM
+python main.py schedule daily \
+  --name "daily_sales_import" \
+  --csv-path "data/daily_sales.csv" \
+  --time "02:00"
+
+# Schedule at different time
+python main.py schedule daily \
+  --name "evening_import" \
+  --csv-path "data/evening_sales.csv" \
+  --time "18:30"
+```
+
+#### **List Scheduled Jobs**
+```bash
+python main.py schedule list
+```
+
+**Output:**
+```
+Scheduled Jobs:
+- daily_sales_import: 02:00 daily (data/daily_sales.csv)
+- evening_import: 18:30 daily (data/evening_sales.csv)
+```
+
+#### **Start Scheduler Daemon**
+```bash
+# Start scheduler (runs continuously)
+python main.py schedule start
+# Press Ctrl+C to stop
+```
+
+---
+
+## ⚡ **Performance Commands**
+
+### **performance** - Query Optimization
+
+#### **Analyze Query Performance**
+```bash
+# Analyze default query
+python main.py performance analyze
+
+# Analyze custom query
+python main.py performance analyze \
+  --query "SELECT COUNT(*) FROM retail_dw.fact_sales WHERE transaction_datetime >= '2023-01-01'"
+```
+
+**Output:**
+```
+Execution Time: 45.23 ms
+Rows Returned: 1
+Cache Hit: false
+```
+
+#### **Cache Statistics**
+```bash
+python main.py performance cache-stats
+```
+
+**Output:**
+```
+Total Entries: 15
+Hit Ratio: 82.3%
+```
+
+---
+
+## 📊 **Data Quality Commands**
+
+### **quality** - Data Validation
+
+#### **Quick Quality Check**
+```bash
+# Check default table (fact_sales)
+python main.py quality check
+
+# Check specific table
+python main.py quality check --table dim_customers
+```
+
+**Output:**
+```
+Checks run: 8, Passed: 7
+Quality Score: 87.5%
+```
+
+#### **Detailed Quality Report**
+```bash
+# Generate comprehensive report
+python main.py quality report
+
+# For specific table
+python main.py quality report --table dim_products
+```
+
+**Sample Report:**
+```
+Data Quality Report for fact_sales
+=====================================
+Completeness: 98.2% (threshold: 95%) ✅
+Validity: 94.1% (threshold: 90%) ✅  
+Uniqueness: 99.8% (threshold: 98%) ✅
+Accuracy: 96.5% (threshold: 85%) ✅
+
+Issues Found:
+- 892 records with missing CustomerID
+- 1,245 records with invalid stock codes
+```
+
+---
+
+## 📚 **Metadata Commands**
+
+### **metadata** - Data Catalog & Lineage
+
+#### **Table Information**
+```bash
+# List all tables with sizes
+python main.py metadata tables
+
+# Show specific table schema
+python main.py metadata tables --table fact_sales
+```
+
+**Output:**
+```
+Tables summary:
+  fact_sales: size=125MB
+  dim_customers: size=2.1MB
+  dim_products: size=890KB
+  dim_date: size=45KB
+```
+
+#### **Data Lineage**
+```bash
+# Show recent data lineage (last 5 jobs)
+python main.py metadata lineage
+```
+
+**Output:**
+```
+retail_etl_20241015_143022: 541909 records -> fact_sales
+daily_import_20241015_020003: 15430 records -> fact_sales
+evening_import_20241014_183015: 8920 records -> fact_sales
+```
+
+#### **Export Metadata**
+```bash
+# Export data dictionary only
+python main.py metadata export
+
+# Export complete metadata repository
+python main.py metadata export --complete
+
+# Export to specific file
+python main.py metadata export \
+  --complete \
+  --filename "metadata_backup_20241015.json"
+```
+
+**Output:**
+```
+✅ Metadata exported to: docs/metadata_repository_20241015_143045.json
+```
+
+---
+
+## 🚨 **Alert Commands**
+
+### **alerts** - Anomaly Detection
+
+#### **Run Anomaly Detection**
+```bash
+# Detect anomalies across all tables
+python main.py alerts run
+
+# For specific table only
+python main.py alerts run --table fact_sales
+
+# Show anomalies in output
+python main.py alerts run --show
+```
+
+**Output with --show:**
+```
+Processed 3 anomalies and triggered alerts (see logs)
+Anomalies:
+- table=fact_sales metric=completeness current=87.2 prev=95.1 drop=7.90 severity=HIGH
+- table=dim_customers metric=validity current=92.3 prev=98.1 drop=5.80 severity=MEDIUM
+```
+
+#### **Test Alert System**
+```bash
+# Send test alert (default: CRITICAL level)
+python main.py alerts test
+
+# Send with custom level and message
+python main.py alerts test \
+  --level WARNING \
+  --message "System maintenance scheduled"
+```
+
+---
+
+## 📦 **Version Management**
+
+### **versions** - Data Version Control
+
+#### **List Data Versions**
+```bash
+# Show last 10 versions (default)
+python main.py versions list
+
+# Show more versions
+python main.py versions list --limit 20
+```
+
+**Output:**
+```
+v1.5 | 541909 rows | SUCCESS | 2024-10-15 14:30:22
+v1.4 | 523450 rows | SUCCESS | 2024-10-14 02:00:15
+v1.3 | 501203 rows | SUCCESS | 2024-10-13 02:00:08
+v1.2 | 487950 rows | FAILED  | 2024-10-12 02:00:12
+```
+
+#### **Show Version Details**
+```bash
+# Show specific version information
+python main.py versions show v1.5
+```
+
+**Output:**
+```
+v1.5 | 541909 rows | SUCCESS | 2024-10-15 14:30:22
+Job: retail_etl_20241015_143022
+Duration: 3.45s
+Quality Score: 96.8%
+```
+
+---
+
+## 🔧 **Configuration Options**
+
+### **Global Options**
+These options can be used with any command:
+
+```bash
+# Custom configuration file
+python main.py --config config/production.yaml [command]
+
+# Set logging level
+python main.py --log-level DEBUG [command]
+
+# Set environment
+python main.py --environment production [command]
+```
+
+### **Environment Variables**
+```bash
+# Database configuration
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=retail_db
+export DB_USER=retail_user
+export DB_PASSWORD=secret
+
+# Application settings
+export ENVIRONMENT=production
+export LOG_LEVEL=INFO
+export BATCH_SIZE=1000
+```
+
+---
+
+## 🎯 **Common Workflows**
+
+### **Daily Operations Workflow**
+```bash
+# 1. Check system health
+python main.py test
+
+# 2. Run ETL for new data
+python main.py etl --source data/daily_sales_20241015.csv
+
+# 3. Validate data quality
+python main.py quality check
+
+# 4. Check for anomalies
+python main.py alerts run
+
+# 5. View processing results
+python main.py versions list --limit 1
+```
+
+### **Weekly Monitoring Workflow**
+```bash
+# 1. Generate quality report
+python main.py quality report > reports/weekly_quality_$(date +%Y%m%d).txt
+
+# 2. Check performance trends
+python main.py performance cache-stats
+
+# 3. Export metadata backup
+python main.py metadata export --complete --filename backups/metadata_$(date +%Y%m%d).json
+
+# 4. Review data lineage
+python main.py metadata lineage
+```
+
+### **Troubleshooting Workflow**
+```bash
+# 1. Test system connectivity
+python main.py test
+
+# 2. Check recent job status
+python main.py versions list --limit 5
+
+# 3. Run anomaly detection
+python main.py alerts run --show
+
+# 4. Analyze performance issues
+python main.py performance analyze
+
+# 5. Generate detailed quality report
+python main.py quality report --table fact_sales
+```
+
+### **New Environment Setup**
+```bash
+# 1. Initialize database
+python main.py setup
+
+# 2. Test connectivity
+python main.py test
+
+# 3. Run initial data load
+python main.py etl --source data/historical_data.csv --job-name initial_load
+
+# 4. Set up scheduling
+python main.py schedule daily --name daily_etl --csv-path data/daily.csv --time 02:00
+
+# 5. Start scheduler
+python main.py schedule start
+```
+
+---
+
+## 📖 **Command Categories Summary**
+
+| Category | Commands | Purpose |
+|----------|----------|---------|
+| **System** | `setup`, `test` | Database initialization, health checks |
+| **ETL** | `etl` | Data processing pipeline |
+| **Scheduling** | `schedule daily`, `schedule list`, `schedule start` | Job automation |
+| **Performance** | `performance analyze`, `performance cache-stats` | Query optimization |
+| **Quality** | `quality check`, `quality report` | Data validation |
+| **Metadata** | `metadata tables`, `metadata lineage`, `metadata export` | Data catalog |
+| **Alerts** | `alerts run`, `alerts test` | Anomaly detection |
+| **Versions** | `versions list`, `versions show` | Version control |
+
+---
+
+## 🚨 **Error Handling**
+
+### **Common Error Messages**
+
+#### **Database Connection Errors**
+```
+❌ Database connection failed. Please check your configuration.
+```
+**Solution**: Verify database is running and connection parameters are correct
+
+#### **ETL Processing Errors**
+```
+❌ ETL failed: File not found: data/missing_file.csv
+```
+**Solution**: Check file path and permissions
+
+#### **Quality Threshold Errors**
+```
+❌ Quality check failed: Completeness 78.2% below threshold 95%
+```
+**Solution**: Review data source quality or adjust thresholds
+
+### **Debug Mode**
+```bash
+# Enable verbose logging for troubleshooting
+python main.py --log-level DEBUG etl --source data.csv
+```
+
+---
