@@ -654,4 +654,3 @@ def get_loader() -> LoaderService:
 
 def load_fact_rows(rows: List[Dict[str, Any]]) -> int:
     return _loader_service_singleton.load_fact_rows(rows)
-# ... ...

@@ -379,7 +379,7 @@ class DataQualityMonitor:
             self.logger.error(f"Trend tracking failed: {e}")
             return {'error': str(e)}
 
-    def detect_quality_anomalies(self, threshold: float = 10.0) -> List[Dict[str, Any]]:
+    def detect_quality_anomalies(self, threshold: float = 90.0) -> List[Dict[str, Any]]:
         """Detect quality score anomalies"""
         try:
             with get_db_session() as session:

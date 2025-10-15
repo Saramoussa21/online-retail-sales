@@ -10,7 +10,6 @@ from contextlib import contextmanager
 from typing import Generator, Optional, Any, Dict
 from sqlalchemy import create_engine, text, event, Engine
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.exc import SQLAlchemyError, DisconnectionError
 from sqlalchemy.pool import QueuePool
 
 from ..config.config_manager import get_config
@@ -72,22 +71,6 @@ class DatabaseManager:
             if schema != "public":
                 with dbapi_connection.cursor() as cursor:
                     cursor.execute(f"SET search_path TO {schema}, public")
-        
-        @event.listens_for(self._engine, "before_cursor_execute")
-        def receive_before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-            """Log slow queries in debug mode"""
-            if self.config.debug:
-                context._query_start_time = time.time()
-        
-        @event.listens_for(self._engine, "after_cursor_execute")
-        def receive_after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-            """Log query execution time in debug mode"""
-            if self.config.debug and hasattr(context, '_query_start_time'):
-                total = time.time() - context._query_start_time
-                if total > 1.0:  # Log queries taking more than 1 second
-                    logger.warning("Slow query detected", 
-                                 duration=total, 
-                                 query=statement[:100])
     
     @property
     def session_factory(self) -> sessionmaker:

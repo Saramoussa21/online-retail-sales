@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS retail_dw.data_versions (
   created_at timestamp without time zone DEFAULT now()
 );
 
+-- dim_transaction_type: static lookup table for transaction types (match enum values)
+CREATE TABLE dim_transaction_type (
+    transaction_type   VARCHAR(50) PRIMARY KEY,
+    effect_sign        SMALLINT NOT NULL CHECK (effect_sign IN (-1, 0, 1)),
+    description        VARCHAR(255) NOT NULL,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- data_lineage: detailed ETL lineage/audit (match models.DataLineage)
 CREATE TABLE IF NOT EXISTS retail_dw.data_lineage (
   lineage_id uuid PRIMARY KEY,
@@ -139,14 +147,6 @@ CREATE TABLE IF NOT EXISTS retail_dw.fact_sales (
   data_source varchar(50) NOT NULL,
   PRIMARY KEY (sales_key, transaction_datetime)
 ) PARTITION BY RANGE (transaction_datetime);
-
--- default archive table (regular)
-CREATE TABLE IF NOT EXISTS retail_dw.fact_sales_archive (
-  archive_id serial PRIMARY KEY,
-  sales_key bigint,
-  archived_at timestamp without time zone DEFAULT now(),
-  payload jsonb
-);
 
 -- Create DEFAULT partition to avoid missing-partition errors
 DO $$
@@ -257,3 +257,72 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'Could not add fk_fact_sales_version: %', SQLERRM;
 END
 $$;
+
+INSERT INTO dim_transaction_type (transaction_type, effect_sign, description) VALUES
+('SALE',               1,  'Normal sale (positive)'),
+('RETURN',            -1,  'Customer return'),
+('ADJUSTMENT_IN',      1,  'Stock added'),
+('ADJUSTMENT_OUT',    -1,  'Stock removed'),
+('DISCOUNT',          -1,  'Promotion or markdown'),
+('DISCOUNT_REVERSAL',  1,  'Reversal of discount'),
+('FEE',               -1,  'Cost fee'),
+('FEE_REVERSAL',       1,  'Reversal of fee'),
+('SHIPPING_CHARGE',    1,  'Customer paid postage'),
+('SHIPPING_REFUND',   -1,  'Refunded postage'),
+('VOUCHER_SALE',       0,  'Neutral'),
+('VOUCHER_REDEMPTION',-1,  'Redeemed voucher'),
+('DONATION',          -1,  'Charitable expense'),
+('SERVICE',            1,  'Service income');
+
+-- ----------------------------------------------------------------------
+-- Trigger and audit table for fact_sales changes (audit history)
+CREATE TABLE retail_dw.fact_sales_archive (
+  archive_id   BIGSERIAL PRIMARY KEY,
+  sales_key    BIGINT NOT NULL,
+  operation    TEXT NOT NULL CHECK (operation IN ('UPDATE','DELETE')),
+  version_id   INTEGER,                                  -- align types
+  changed_at   TIMESTAMP NOT NULL DEFAULT now(),
+  changed_by   TEXT,
+  payload      JSONB NOT NULL,
+  CONSTRAINT fk_fsa_version FOREIGN KEY (version_id)
+    REFERENCES retail_dw.data_versions(version_id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_fsa_sales_key  ON retail_dw.fact_sales_archive(sales_key);
+CREATE INDEX IF NOT EXISTS ix_fsa_changed_at ON retail_dw.fact_sales_archive(changed_at);
+
+-- 3) Recreate trigger function (no UUID casts)
+CREATE OR REPLACE FUNCTION retail_dw.trg_fact_sales_audit()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    INSERT INTO retail_dw.fact_sales_archive (sales_key, operation, version_id, changed_by, payload)
+    VALUES (OLD.sales_key,
+            'UPDATE',
+            COALESCE(NEW.version_id, OLD.version_id),
+            session_user,
+            to_jsonb(OLD));
+    RETURN NEW;
+
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO retail_dw.fact_sales_archive (sales_key, operation, version_id, changed_by, payload)
+    VALUES (OLD.sales_key,
+            'DELETE',
+            OLD.version_id,
+            session_user,
+            to_jsonb(OLD));
+    RETURN OLD;
+  END IF;
+
+  RETURN NULL;
+END
+$$;
+
+-- 4) Reattach trigger
+CREATE TRIGGER fact_sales_audit_trg
+BEFORE UPDATE OR DELETE ON retail_dw.fact_sales
+FOR EACH ROW
+EXECUTE FUNCTION retail_dw.trg_fact_sales_audit();
+

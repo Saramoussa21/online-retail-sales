@@ -1,0 +1,20 @@
+[
+  {
+    "id": "e0cdb3d6-744a-4edd-b551-28332f927312",
+    "name": "etl-v2",
+    "type": "daily",
+    "time": "11:21",
+    "csv_path": "data/online_retail.csv",
+    "created_at": "2025-10-15T08:21:12.665024Z",
+    "last_run": null
+  },
+  {
+    "id": "f55be273-35bd-482e-9658-97102099551c",
+    "name": "etl-v3",
+    "type": "daily",
+    "time": "11:23",
+    "csv_path": "data/online_retail.csv",
+    "created_at": "2025-10-15T08:22:42.296821Z",
+    "last_run": "2025-10-15T08:23:01.200748"
+  }
+]

@@ -9,11 +9,11 @@ import re
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Set, Tuple, Callable
+from typing import Dict, Any, List, Optional, Set, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
-from statistics import median, mode, stdev
+from statistics import median, mode
 
 from ..utils.logging_config import ETLLogger
 from ..config.config_manager import get_config
@@ -25,8 +25,8 @@ class CleaningRule:
     name: str
     description: str
     function: Callable[[Any], Any]
-    columns: List[str] = field(default_factory=list)  
-    severity: str = "ERROR"  
+    columns: List[str] = field(default_factory=list)
+    severity: str = "ERROR"
     enabled: bool = True
 
 
@@ -52,7 +52,7 @@ class CleaningMetrics:
     outliers_detected: int = 0
     validation_errors: int = 0
     cleaning_rules_applied: Dict[str, int] = field(default_factory=dict)
-    
+
     @property
     def cleaning_rate(self) -> float:
         """Calculate cleaning success rate"""
@@ -63,17 +63,17 @@ class CleaningMetrics:
 
 class DataCleaner(ABC):
     """Abstract base class for data cleaners"""
-    
+
     def __init__(self, name: str):
         self.name = name
         self.logger = ETLLogger(f"cleaning.{name}")
         self.metrics = CleaningMetrics()
-    
+
     @abstractmethod
     def clean(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Clean a single record"""
-        pass
-    
+        raise NotImplementedError
+
     def get_metrics(self) -> CleaningMetrics:
         """Get cleaning metrics"""
         return self.metrics
@@ -81,12 +81,12 @@ class DataCleaner(ABC):
 
 class RetailDataCleaner(DataCleaner):
     """Specialized cleaner for retail sales data"""
-    
+
     def __init__(self):
         super().__init__("retail_sales")
         self.cleaning_rules = self._initialize_cleaning_rules()
         self.validation_rules = self._initialize_validation_rules()
-    
+
     def _initialize_cleaning_rules(self) -> List[CleaningRule]:
         """Initialize cleaning rules for retail data"""
         return [
@@ -139,10 +139,17 @@ class RetailDataCleaner(DataCleaner):
                 columns=["InvoiceDate"]
             )
         ]
-    
+
     def _initialize_validation_rules(self) -> List[ValidationRule]:
         """Initialize validation rules for retail data"""
         return [
+            # NEW: enforce presence of the three natural keys
+            ValidationRule(
+                name="validate_required_fields_present",
+                description="InvoiceNo, StockCode, CustomerID must be non-empty after cleaning",
+                function=lambda x: bool(str(x).strip()),
+                columns=["InvoiceNo", "StockCode", "CustomerID"]
+            ),
             ValidationRule(
                 name="validate_invoice_format",
                 description="Validate invoice number format",
@@ -164,17 +171,16 @@ class RetailDataCleaner(DataCleaner):
             ValidationRule(
                 name="validate_date_range",
                 description="Validate invoice date is within reasonable range",
-                function=lambda x: isinstance(x, (date, datetime)) and 
-                         date(2009, 1, 1) <= x.date() <= date.today(),
+                function=lambda x: isinstance(x, (date, datetime)) and date(2009, 1, 1) <= x.date() <= date.today(),
                 columns=["InvoiceDate"]
             )
         ]
-    
-    def clean(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def clean(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Clean a single retail sales record"""
         cleaned_data = data.copy()
         self.metrics.total_records += 1
-        
+
         try:
             # Apply cleaning rules (including invoice cleaning)
             for rule in self.cleaning_rules:
@@ -187,15 +193,14 @@ class RetailDataCleaner(DataCleaner):
                                         cleaned_data[col] = rule.function(cleaned_data[col])
                             else:
                                 cleaned_data = rule.function(cleaned_data)
-                            
+
                             self.metrics.cleaning_rules_applied[rule.name] = \
                                 self.metrics.cleaning_rules_applied.get(rule.name, 0) + 1
-                                
+
                         except Exception as e:
-                            self.logger.warning(f"Cleaning rule {rule.name} failed", 
-                                            error=str(e), record_data=data)
-            
-            
+                            self.logger.warning(f"Cleaning rule {rule.name} failed",
+                                                error=str(e), record_data=data)
+
             # Apply validation rules
             validation_passed = True
             for rule in self.validation_rules:
@@ -205,137 +210,111 @@ class RetailDataCleaner(DataCleaner):
                             if not rule.function(cleaned_data[col]):
                                 validation_passed = False
                                 self.metrics.validation_errors += 1
-                                
                                 if rule.severity == "ERROR":
                                     self.logger.error(f"Validation failed: {rule.description}",
-                                                    column=col, value=cleaned_data[col])
+                                                      column=col, value=cleaned_data[col])
                                     break
                                 else:
                                     self.logger.warning(f"Validation warning: {rule.description}",
-                                                    column=col, value=cleaned_data[col])
-            
+                                                        column=col, value=cleaned_data[col])
+                    if not validation_passed:
+                        break
+
             if validation_passed:
                 self.metrics.records_cleaned += 1
                 return cleaned_data
             else:
                 self.metrics.records_rejected += 1
                 return None
-                
+
         except Exception as e:
             self.logger.error(f"Record cleaning failed: {e}", record_data=data)
             self.metrics.records_rejected += 1
             return None
-        
+
     def _clean_invoice_number(self, invoice_no: str) -> str:
         """Clean invoice number"""
         if not invoice_no:
             return ""
-        
-        # Remove whitespace and convert to uppercase
         cleaned = str(invoice_no).strip().upper()
-        
         return cleaned
-    
+
     def _clean_stock_code(self, stock_code: str) -> str:
         """Clean stock code"""
         if not stock_code:
             return ""
-        
-        # Remove whitespace and standardize case
         cleaned = str(stock_code).strip().upper()
-        
-        # Remove special characters except alphanumeric and common separators
         cleaned = re.sub(r'[^\w\-\.]', '', cleaned)
-        
         return cleaned
-    
+
     def _clean_description(self, description: str) -> str:
         """Clean product description"""
         if not description:
-            return ""
-        
-        # Remove extra whitespace
+            return "Unknown"
         cleaned = re.sub(r'\s+', ' ', str(description)).strip()
-        
-        # Standardize case (title case)
         cleaned = cleaned.title()
-        
-        # Remove special characters at the end
         cleaned = re.sub(r'[\.\,\-\s]+$', '', cleaned)
-        
         return cleaned
-    
+
     def _clean_quantity(self, quantity: str) -> int:
         """Clean and convert quantity to integer, handling returns"""
-        if not quantity:
+        if quantity is None or (isinstance(quantity, str) and quantity.strip() == ""):
             return 0
-        
         try:
-            # Handle string representations
             if isinstance(quantity, str):
                 quantity = quantity.strip()
-                # Remove any non-numeric characters except minus sign
                 quantity = re.sub(r'[^\d\-\.]', '', quantity)
-            
             qty_value = int(float(quantity))
-            
             return qty_value
         except (ValueError, TypeError):
             self.logger.warning(f"Invalid quantity value: {quantity}")
             return 0
-    
+
     def _clean_unit_price(self, unit_price: str) -> Decimal:
         """Clean and convert unit price to decimal"""
-        if not unit_price:
+        if unit_price is None or (isinstance(unit_price, str) and unit_price.strip() == ""):
             return Decimal('0.00')
-        
         try:
-            # Handle string representations
             if isinstance(unit_price, str):
                 unit_price = unit_price.strip()
-                # Remove currency symbols and spaces
                 unit_price = re.sub(r'[£$€\s,]', '', unit_price)
-            
-            return Decimal(str(unit_price)).quantize(Decimal('0.01'))
+            value = Decimal(str(unit_price))
+            # force non-negative
+            if value < 0:
+                value = abs(value)
+            return value.quantize(Decimal('0.01'))
         except (ValueError, TypeError, InvalidOperation):
             self.logger.warning(f"Invalid unit price value: {unit_price}")
             return Decimal('0.00')
-    
+
     def _clean_customer_id(self, customer_id: str) -> str:
-        """Clean customer ID"""
-        if not customer_id:
+        """Clean customer ID; normalize unknowns to empty so validation can drop"""
+        if customer_id is None:
             return ""
-        
-        # Convert to string and remove decimal points if it's a float string
         cleaned = str(customer_id).strip()
+        if cleaned.lower() in {"", "nan", "none", "null", "unknown"}:
+            return ""
         if cleaned.endswith('.0'):
             cleaned = cleaned[:-2]
-        
         return cleaned
-    
+
     def _clean_country(self, country: str) -> str:
         """Standardize country names"""
         if not country:
-            return ""
-        
+            return "Unknown"
         country = str(country).strip().title()
-        
-        # Country name standardization mapping
         country_mapping = {
             'Uk': 'United Kingdom',
             'Usa': 'United States',
             'Uae': 'United Arab Emirates',
             'Rsa': 'South Africa',
         }
-        
         return country_mapping.get(country, country)
-    
+
     def _clean_date(self, date_str: str) -> datetime:
         """Parse and clean invoice date"""
         if not date_str:
             raise ValueError("Empty date string")
-        
-        # Common date formats to try
         date_formats = [
             '%Y-%m-%d %H:%M:%S',
             '%d/%m/%Y %H:%M',
@@ -344,16 +323,12 @@ class RetailDataCleaner(DataCleaner):
             '%d/%m/%Y',
             '%d-%m-%Y'
         ]
-        
         date_str = str(date_str).strip()
-        
         for fmt in date_formats:
             try:
                 return datetime.strptime(date_str, fmt)
             except ValueError:
                 continue
-        
-        # If no format worked, try pandas parsing
         try:
             return pd.to_datetime(date_str)
         except Exception:
@@ -362,86 +337,69 @@ class RetailDataCleaner(DataCleaner):
 
 class DuplicateHandler:
     """Handles duplicate record detection and removal"""
-    
+
     def __init__(self, key_columns: List[str], strategy: str = "keep_latest"):
         self.key_columns = key_columns
         self.strategy = strategy  # keep_latest, keep_first, remove_all
         self.logger = ETLLogger("cleaning.duplicates")
         self.seen_keys: Set[str] = set()
         self.duplicate_count = 0
-    
+
     def is_duplicate(self, record: Dict[str, Any]) -> bool:
         """Check if record is a duplicate"""
-        # Create composite key from specified columns
-        key_values = []
-        for col in self.key_columns:
-            key_values.append(str(record.get(col, '')))
-        
+        key_values = [str(record.get(col, '')) for col in self.key_columns]
         composite_key = '|'.join(key_values)
-        
         if composite_key in self.seen_keys:
             self.duplicate_count += 1
             return True
-        
         self.seen_keys.add(composite_key)
         return False
-    
+
     def get_duplicate_count(self) -> int:
-        """Get number of duplicates detected"""
         return self.duplicate_count
 
 
 class OutlierDetector:
     """Detects outliers in numerical data"""
-    
+
     def __init__(self, method: str = "iqr", threshold: float = 1.5):
-        self.method = method  # iqr, zscore, modified_zscore
+        self.method = method  # iqr, zscore
         self.threshold = threshold
         self.logger = ETLLogger("cleaning.outliers")
         self.outlier_count = 0
-    
+
     def is_outlier(self, value: float, column_data: List[float]) -> bool:
-        """Check if value is an outlier"""
         if self.method == "iqr":
             return self._iqr_outlier(value, column_data)
         elif self.method == "zscore":
             return self._zscore_outlier(value, column_data)
         else:
             return False
-    
+
     def _iqr_outlier(self, value: float, data: List[float]) -> bool:
-        """Detect outlier using IQR method"""
         try:
             q1 = np.percentile(data, 25)
             q3 = np.percentile(data, 75)
             iqr = q3 - q1
-            
             lower_bound = q1 - (self.threshold * iqr)
             upper_bound = q3 + (self.threshold * iqr)
-            
             is_outlier = value < lower_bound or value > upper_bound
             if is_outlier:
                 self.outlier_count += 1
-                
             return is_outlier
         except Exception:
             return False
-    
+
     def _zscore_outlier(self, value: float, data: List[float]) -> bool:
-        """Detect outlier using Z-score method"""
         try:
             mean_val = np.mean(data)
             std_val = np.std(data)
-            
             if std_val == 0:
                 return False
-            
             z_score = abs((value - mean_val) / std_val)
             is_outlier = z_score > self.threshold
-            
             if is_outlier:
                 self.outlier_count += 1
-                
             return is_outlier
         except Exception:
             return False
@@ -449,11 +407,11 @@ class OutlierDetector:
 
 class MissingValueHandler:
     """Handles missing values with various strategies"""
-    
+
     def __init__(self, strategy_map: Dict[str, str]):
         """
         Initialize with column-specific strategies
-        
+
         Args:
             strategy_map: Dict mapping column names to strategies
                          (drop, fill_mean, fill_median, fill_mode, fill_zero, fill_unknown)
@@ -461,28 +419,23 @@ class MissingValueHandler:
         self.strategy_map = strategy_map
         self.logger = ETLLogger("cleaning.missing_values")
         self.missing_count = 0
-    
-    def handle_missing(self, record: Dict[str, Any], 
-                      reference_data: Dict[str, List[Any]] = None) -> Optional[Dict[str, Any]]:
+
+    def handle_missing(self, record: Dict[str, Any],
+                       reference_data: Dict[str, List[Any]] = None) -> Optional[Dict[str, Any]]:
         """Handle missing values in a record"""
         cleaned_record = record.copy()
-        
         for column, value in record.items():
             if self._is_missing(value):
                 self.missing_count += 1
                 strategy = self.strategy_map.get(column, "fill_unknown")
-                
                 if strategy == "drop":
                     return None  # Drop entire record
-                
                 cleaned_record[column] = self._apply_strategy(
                     strategy, column, reference_data
                 )
-        
         return cleaned_record
-    
+
     def _is_missing(self, value: Any) -> bool:
-        """Check if value is considered missing"""
         if value is None:
             return True
         if isinstance(value, str) and value.strip() == "":
@@ -490,10 +443,9 @@ class MissingValueHandler:
         if isinstance(value, float) and np.isnan(value):
             return True
         return False
-    
-    def _apply_strategy(self, strategy: str, column: str, 
-                       reference_data: Dict[str, List[Any]] = None) -> Any:
-        """Apply missing value strategy"""
+
+    def _apply_strategy(self, strategy: str, column: str,
+                        reference_data: Dict[str, List[Any]] = None) -> Any:
         if strategy == "fill_zero":
             return 0
         elif strategy == "fill_unknown":
@@ -522,11 +474,11 @@ class DataCleaningPipeline:
     """
     Orchestrates the complete data cleaning process
     """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or self._get_default_config()
         self.logger = ETLLogger("cleaning.pipeline")
-        
+
         # Initialize components
         self.cleaner = RetailDataCleaner()
         self.duplicate_handler = DuplicateHandler(
@@ -539,18 +491,24 @@ class DataCleaningPipeline:
         )
         self.missing_value_handler = MissingValueHandler(
             strategy_map=self.config.get('missing_value_strategies', {
-                'CustomerID': 'fill_unknown',
+                'InvoiceNo': 'drop',
+                'StockCode': 'drop',
+                'CustomerID': 'drop',
                 'Description': 'fill_unknown',
                 'Quantity': 'drop',
                 'UnitPrice': 'drop',
                 'InvoiceDate': 'drop'
             })
         )
-        
+
         self.total_processed = 0
         self.total_cleaned = 0
         self.total_rejected = 0
-    
+
+        # NEW: quarantine rejected rows + simple invoice context for backfill
+        self.bad_records: List[Dict[str, Any]] = []
+        self._invoice_context: Dict[str, Dict[str, Any]] = {}
+
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default cleaning configuration"""
         return {
@@ -562,72 +520,118 @@ class DataCleaningPipeline:
             'duplicate_strategy': 'keep_latest',
             'outlier_method': 'iqr',
             'outlier_threshold': 1.5,
+            # STRICT: drop rows missing core fields
             'missing_value_strategies': {
-                'CustomerID': 'fill_unknown',
+                'InvoiceNo': 'drop',
+                'StockCode': 'drop',
+                'CustomerID': 'drop',
                 'Description': 'fill_unknown',
                 'Quantity': 'drop',
                 'UnitPrice': 'drop',
                 'InvoiceDate': 'drop'
             }
         }
-    
+
     def clean_record(self, record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Clean a single record through the complete pipeline"""
         self.total_processed += 1
-        
         try:
-            # Step 1: Handle missing values
+            # Pre-backfill CustomerID from same InvoiceNo if known from prior lines
+            try:
+                inv = str(record.get("InvoiceNo") or "").strip()
+                cust = record.get("CustomerID")
+                if inv and (cust is None or str(cust).strip().lower() in {"", "nan", "none", "null", "unknown"}):
+                    prior = self._invoice_context.get(inv, {})
+                    if "CustomerID" in prior:
+                        record["CustomerID"] = prior["CustomerID"]
+            except Exception:
+                pass
+
+            # Step 1: Handle missing values (strict dropping per config)
             if self.config.get('enable_missing_value_handling', True):
+                original = record.copy()
                 record = self.missing_value_handler.handle_missing(record)
                 if record is None:
+                    original["_reject_reason"] = "missing_required_field"
+                    self.bad_records.append(original)
                     self.total_rejected += 1
                     return None
-            
+
             # Step 2: Apply data cleaning rules
             cleaned_record = self.cleaner.clean(record)
             if cleaned_record is None:
+                record["_reject_reason"] = "validation_failed"
+                self.bad_records.append(record)
                 self.total_rejected += 1
                 return None
-            
-            # Step 3: Check for duplicates
-            if self.config.get('enable_duplicate_detection', True):
-                if self.duplicate_handler.is_duplicate(cleaned_record):
-                    self.logger.debug("Duplicate record detected", record=cleaned_record)
+
+            # Step 3: Zero checks
+            try:
+                q = int(float(cleaned_record.get("Quantity", 0)))
+                up = float(cleaned_record.get("UnitPrice", 0))
+                if q == 0:
+                    cleaned_record["_reject_reason"] = "quantity_zero"
+                    self.bad_records.append(cleaned_record)
                     self.total_rejected += 1
                     return None
-            
-            # Step 4: Detect outliers (for numerical columns)
+                # quarantine truly free lines (0 price) unless you whitelist later
+                if up == 0.0:
+                    cleaned_record["_reject_reason"] = "unit_price_zero_quarantine"
+                    self.bad_records.append(cleaned_record)
+                    self.total_rejected += 1
+                    return None
+            except Exception:
+                pass
+
+            # Step 4: Check for duplicates
+            if self.config.get('enable_duplicate_detection', True):
+                if self.duplicate_handler.is_duplicate(cleaned_record):
+                    cleaned_record["_reject_reason"] = "duplicate"
+                    self.bad_records.append(cleaned_record)
+                    self.total_rejected += 1
+                    return None
+
+            # Step 5: Detect outliers (soft warnings)
             if self.config.get('enable_outlier_detection', True):
                 self._check_extreme_values(cleaned_record)
-            
+
             self.total_cleaned += 1
+
+            # Update invoice context to help future backfills
+            try:
+                inv = str(cleaned_record.get("InvoiceNo") or "").strip()
+                cust = str(cleaned_record.get("CustomerID") or "").strip()
+                if inv:
+                    ctx = self._invoice_context.setdefault(inv, {})
+                    if cust:
+                        ctx["CustomerID"] = cust
+            except Exception:
+                pass
+
             return cleaned_record
-            
+
         except Exception as e:
-            self.logger.error(f"Record cleaning failed: {e}", record=record)
+            record["_reject_reason"] = f"exception:{e}"
+            self.bad_records.append(record)
             self.total_rejected += 1
             return None
-    
+
     def _check_extreme_values(self, record: Dict[str, Any]) -> None:
         """Check for extreme values that might be outliers"""
         try:
             quantity = float(record.get('Quantity', 0))
             unit_price = float(record.get('UnitPrice', 0))
-            
-            # Basic extreme value checks
             if abs(quantity) > 10000:
-                self.logger.warning("Extreme quantity detected", 
-                                  quantity=quantity, record=record)
-            
+                self.logger.warning("Extreme quantity detected",
+                                    quantity=quantity, record=record)
             if unit_price > 1000:
-                self.logger.warning("Extreme unit price detected", 
-                                  unit_price=unit_price, record=record)
-                                  
+                self.logger.warning("Extreme unit price detected",
+                                    unit_price=unit_price, record=record)
         except (ValueError, TypeError):
             pass
 
 
 # Factory function
-def create_cleaning_pipeline(config: Optional[Dict[str, Any]] = None) -> DataCleaningPipeline:
+def create_cleaning_pipeline(config: Optional[Dict[str, Any]] = None) -> 'DataCleaningPipeline':
     """Create and return a configured data cleaning pipeline"""
     return DataCleaningPipeline(config)
