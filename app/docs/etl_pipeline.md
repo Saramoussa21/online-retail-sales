@@ -12,70 +12,387 @@ The Retail Data Platform is an enterprise-grade data engineering solution built 
 
 ---
 
-## 🏛️ **High-Level Architecture**
+## 🏛️ **System Architecture**
+
+### **High-Level Architecture Overview**
 
 ```mermaid
-graph TB
-    subgraph "Data Sources"
-        CSV[CSV Files]
-        DB[Databases]
-        API[APIs]
+flowchart TD
+    %% Data Sources
+    subgraph DS ["🗂️ Data Sources"]
+        direction TB
+        CSV["📄 CSV Files<br/>(541K Records)"]
+        DB["🗄️ Databases<br/>(OLTP Systems)"]
+        API["🌐 REST APIs<br/>(External Services)"]
     end
-    
-    subgraph "ETL Pipeline"
-        ING[Ingestion Layer]
-        CLN[Cleaning Layer]
-        TRF[Transformation Layer]
-        LOD[Loading Layer]
+
+    %% ETL Pipeline
+    subgraph ETL ["🔄 ETL Pipeline"]
+        direction TB
+        ING["📥 Ingestion Layer<br/>• Chunked Processing<br/>• Schema Validation<br/>• Format Detection"]
+        CLN["🧹 Cleaning Layer<br/>• Deduplication<br/>• Missing Values<br/>• Positive Enforcement"]
+        TRF["⚙️ Transformation Layer<br/>• Dimensional Modeling<br/>• Business Rules<br/>• SCD Processing"]
+        LOD["📤 Loading Layer<br/>• Batch Processing<br/>• ACID Transactions<br/>• Constraint Validation"]
     end
-    
-    subgraph "Data Warehouse"
-        DIM[Dimensions]
-        FACT[Fact Tables]
-        META[Metadata]
+
+    %% Data Warehouse
+    subgraph DW ["🏢 Data Warehouse (PostgreSQL)"]
+        direction TB
+        subgraph DIMS ["📊 Dimensions"]
+            DCUST["👥 dim_customers<br/>(SCD Type 2)"]
+            DPROD["📦 dim_products<br/>(SCD Type 1)"]
+            DDATE["📅 dim_date<br/>(Static)"]
+        end
+        subgraph FACTS ["💰 Facts"]
+            FSALES["💳 fact_sales<br/>(Partitioned)"]
+        end
+        subgraph MDATA ["📋 Metadata"]
+            META["📈 Quality Metrics<br/>🔗 Data Lineage<br/>📝 Job History"]
+        end
     end
-    
-    subgraph "Monitoring & Quality"
-        QM[Quality Monitor]
-        PM[Performance Monitor]
-        AL[Alert Manager]
+
+    %% Monitoring & Quality
+    subgraph MQ ["📊 Monitoring & Quality"]
+        direction TB
+        QM["🔍 Quality Monitor<br/>• Real-time Validation<br/>• Anomaly Detection<br/>• Threshold Enforcement"]
+        PM["⚡ Performance Monitor<br/>• Query Optimization<br/>• Cache Management<br/>• Resource Tracking"]
+        AL["🚨 Alert Manager<br/>• Quality Violations<br/>• Performance Issues<br/>• System Failures"]
     end
-    
-    subgraph "Management Layer"
-        CLI[CLI Interface]
-        SCHED[Scheduler]
-        CACHE[Cache Layer]
-        LOG[Logging]
+
+    %% Management Layer
+    subgraph ML ["🛠️ Management Layer"]
+        direction TB
+        CLI["💻 CLI Interface<br/>• 30+ Commands<br/>• Rich Output<br/>• Help System"]
+        SCHED["⏰ Job Scheduler<br/>• Cron-like Jobs<br/>• Dependency Mgmt<br/>• Retry Logic"]
+        CACHE["🚀 Cache Layer<br/>• Query Caching<br/>• 80%+ Hit Rate<br/>• TTL Management"]
+        LOG["📝 Logging System<br/>• Structured Logs<br/>• JSON Format<br/>• Audit Trail"]
     end
-    
+
+    %% Connections
     CSV --> ING
     DB --> ING
     API --> ING
-    
+
     ING --> CLN
     CLN --> TRF
     TRF --> LOD
-    
-    LOD --> DIM
-    LOD --> FACT
+
+    LOD --> DCUST
+    LOD --> DPROD
+    LOD --> DDATE
+    LOD --> FSALES
     LOD --> META
-    
-    CLN --> QM
-    TRF --> QM
-    LOD --> PM
-    
+
+    CLN -.-> QM
+    TRF -.-> QM
+    LOD -.-> PM
+    FSALES -.-> PM
+
     QM --> AL
     PM --> AL
-    
-    CLI --> ING
-    CLI --> QM
-    CLI --> PM
-    CLI --> SCHED
-    
-    CACHE --> DIM
-    CACHE --> FACT
+
+    CLI --> ETL
+    CLI --> MQ
+    CLI --> DW
+    SCHED --> ETL
+    CACHE --> DW
+    LOG --> ETL
+    LOG --> MQ
+
+    %% Styling
+    classDef sourceStyle fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000
+    classDef etlStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef warehouseStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px,color:#000
+    classDef monitorStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef mgmtStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
+
+    class DS,CSV,DB,API sourceStyle
+    class ETL,ING,CLN,TRF,LOD etlStyle
+    class DW,DIMS,FACTS,MDATA,DCUST,DPROD,DDATE,FSALES,META warehouseStyle
+    class MQ,QM,PM,AL monitorStyle
+    class ML,CLI,SCHED,CACHE,LOG mgmtStyle
 ```
 
+### **Detailed ETL Data Flow**
+
+```mermaid
+flowchart LR
+    %% Input
+    subgraph INPUT ["📥 Input Data"]
+        RAW["🗂️ Raw CSV<br/>541,909 Records<br/>8 Columns"]
+    end
+
+    %% Ingestion Phase
+    subgraph INGEST ["📥 Ingestion Phase"]
+        direction TB
+        CHUNK["⚡ Chunked Reading<br/>1,000 rows/batch<br/>Memory: ~50MB"]
+        VALID["✅ Schema Validation<br/>Column types<br/>Required fields"]
+        ENCODE["🔤 Format Detection<br/>Encoding: UTF-8<br/>Delimiter: Comma"]
+    end
+
+    %% Cleaning Phase
+    subgraph CLEAN ["🧹 Cleaning Phase"]
+        direction TB
+        DEDUP["🔄 Deduplication<br/>Composite Key:<br/>InvoiceNo + StockCode"]
+        MISSING["🔧 Missing Values<br/>CustomerID → GUEST<br/>Description → Unknown"]
+        POSITIVE["➕ Positive Values<br/>abs(Quantity)<br/>abs(UnitPrice)"]
+        OUTLIER["📊 Outlier Detection<br/>IQR Method<br/>Statistical Bounds"]
+    end
+
+    %% Transformation Phase
+    subgraph TRANSFORM ["⚙️ Transformation Phase"]
+        direction TB
+        LOOKUP["🔍 Dimension Lookups<br/>Customer Keys<br/>Product Keys<br/>Date Keys"]
+        BUSINESS["💼 Business Rules<br/>LineTotal = Qty × Price<br/>Transaction Classification"]
+        SCD["📅 SCD Processing<br/>Type 1: Products<br/>Type 2: Customers"]
+    end
+
+    %% Loading Phase
+    subgraph LOAD ["📤 Loading Phase"]
+        direction TB
+        BATCH["📦 Batch Insert<br/>1,000 records/batch<br/>ACID Transactions"]
+        CONSTRAINTS["🔒 Constraint Validation<br/>Foreign Keys<br/>Check Constraints"]
+        COMMIT["✅ Transaction Commit<br/>All-or-Nothing<br/>Rollback on Error"]
+    end
+
+    %% Quality Gates
+    subgraph QUALITY ["📊 Quality Gates"]
+        direction TB
+        Q1["🎯 Completeness<br/>≥95% non-null"]
+        Q2["✅ Validity<br/>≥90% format compliance"]
+        Q3["🔍 Accuracy<br/>≥85% business rules"]
+        Q4["🚨 Anomaly Detection<br/>10%+ drop = alert"]
+    end
+
+    %% Output
+    subgraph OUTPUT ["📊 Output Warehouse"]
+        direction TB
+        STAR["⭐ Star Schema<br/>4 Dimensions<br/>1 Fact Table<br/>98.5% Success Rate"]
+    end
+
+    %% Flow
+    RAW --> CHUNK
+    CHUNK --> VALID
+    VALID --> ENCODE
+
+    ENCODE --> DEDUP
+    DEDUP --> MISSING
+    MISSING --> POSITIVE
+    POSITIVE --> OUTLIER
+
+    OUTLIER --> LOOKUP
+    LOOKUP --> BUSINESS
+    BUSINESS --> SCD
+
+    SCD --> BATCH
+    BATCH --> CONSTRAINTS
+    CONSTRAINTS --> COMMIT
+
+    CHUNK -.-> Q1
+    DEDUP -.-> Q2
+    BUSINESS -.-> Q3
+    COMMIT -.-> Q4
+
+    COMMIT --> STAR
+
+    %% Styling
+    classDef inputStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
+    classDef processStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef qualityStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef outputStyle fill:#e8f5e8,stroke:#388e3c,stroke-width:3px,color:#000
+
+    class INPUT,RAW inputStyle
+    class INGEST,CLEAN,TRANSFORM,LOAD,CHUNK,VALID,ENCODE,DEDUP,MISSING,POSITIVE,OUTLIER,LOOKUP,BUSINESS,SCD,BATCH,CONSTRAINTS,COMMIT processStyle
+    class QUALITY,Q1,Q2,Q3,Q4 qualityStyle
+    class OUTPUT,STAR outputStyle
+```
+
+### **Performance & Monitoring Architecture**
+
+```mermaid
+flowchart TD
+    %% Application Layer
+    subgraph APP ["💻 Application Layer"]
+        direction LR
+        CLI["🖥️ CLI Interface<br/>30+ Commands"]
+        API["🔌 Future API Layer<br/>REST/GraphQL"]
+    end
+
+    %% Processing Engine
+    subgraph ENGINE ["⚙️ Processing Engine"]
+        direction TB
+        ETL["🔄 ETL Pipeline<br/>180K records/sec"]
+        CACHE["🚀 Query Cache<br/>80% hit rate<br/>Sub-second response"]
+        POOL["🏊 Connection Pool<br/>20 connections<br/>30 overflow"]
+    end
+
+    %% Database Layer
+    subgraph DB ["🗄️ Database Layer"]
+        direction TB
+        PG["🐘 PostgreSQL 12+<br/>ACID Compliance"]
+        PART["📊 Partitioning<br/>Monthly partitions"]
+        IDX["📇 Strategic Indexing<br/>95% query coverage"]
+    end
+
+    %% Monitoring Stack
+    subgraph MONITOR ["📈 Monitoring Stack"]
+        direction TB
+        QUALITY["📊 Quality Monitor<br/>Real-time validation<br/>Anomaly detection"]
+        PERF["⚡ Performance Monitor<br/>Query analysis<br/>Resource tracking"]
+        ALERT["🚨 Alert Manager<br/>Multi-channel alerts<br/>Threshold enforcement"]
+        LINEAGE["🔗 Data Lineage<br/>Source-to-target<br/>Impact analysis"]
+    end
+
+    %% Storage & Persistence
+    subgraph STORAGE ["💾 Storage & Persistence"]
+        direction TB
+        WAREHOUSE["🏢 Data Warehouse<br/>Star schema<br/>Fact + Dimensions"]
+        METADATA["📋 Metadata Store<br/>Catalog + Lineage<br/>Quality metrics"]
+        LOGS["📝 Audit Logs<br/>Structured JSON<br/>Complete history"]
+        VERSIONS["📦 Version Control<br/>Data snapshots<br/>Rollback capability"]
+    end
+
+    %% External Systems
+    subgraph EXTERNAL ["🌐 External Integration"]
+        direction TB
+        BI["📊 BI Tools<br/>Tableau, PowerBI<br/>Direct SQL access"]
+        JUPYTER["📓 Jupyter Notebooks<br/>Data science<br/>Ad-hoc analysis"]
+        EXPORT["📤 Data Export<br/>CSV, JSON, Parquet<br/>Scheduled delivery"]
+    end
+
+    %% Connections
+    CLI --> ENGINE
+    API --> ENGINE
+    
+    ENGINE --> DB
+    ENGINE --> MONITOR
+    
+    DB --> STORAGE
+    MONITOR --> STORAGE
+    
+    STORAGE --> EXTERNAL
+    
+    %% Feedback loops
+    MONITOR -.-> ENGINE
+    PERF -.-> DB
+    QUALITY -.-> ETL
+    
+    %% Styling
+    classDef appStyle fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#000
+    classDef engineStyle fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px,color:#000
+    classDef dbStyle fill:#e0f2f1,stroke:#00796b,stroke-width:2px,color:#000
+    classDef monitorStyle fill:#fff8e1,stroke:#ff8f00,stroke-width:2px,color:#000
+    classDef storageStyle fill:#fce4ec,stroke:#ad1457,stroke-width:2px,color:#000
+    classDef externalStyle fill:#f1f8e9,stroke:#558b2f,stroke-width:2px,color:#000
+
+    class APP,CLI,API appStyle
+    class ENGINE,ETL,CACHE,POOL engineStyle
+    class DB,PG,PART,IDX dbStyle
+    class MONITOR,QUALITY,PERF,ALERT,LINEAGE monitorStyle
+    class STORAGE,WAREHOUSE,METADATA,LOGS,VERSIONS storageStyle
+    class EXTERNAL,BI,JUPYTER,EXPORT externalStyle
+```
+
+### **Data Quality Framework**
+
+```mermaid
+flowchart TB
+    %% Input Data
+    subgraph INPUT ["📥 Input Data Stream"]
+        direction LR
+        BATCH["📦 Data Batch<br/>1,000 records"]
+    end
+
+    %% Quality Dimensions
+    subgraph DIMENSIONS ["📊 Quality Dimensions"]
+        direction TB
+        COMPLETE["✅ Completeness<br/>95% threshold<br/>Non-null values"]
+        VALID["🔍 Validity<br/>90% threshold<br/>Format compliance"]
+        UNIQUE["🎯 Uniqueness<br/>Duplicate detection<br/>Composite keys"]
+        ACCURATE["💯 Accuracy<br/>85% threshold<br/>Business rules"]
+        CONSISTENT["🔗 Consistency<br/>Cross-table validation<br/>Referential integrity"]
+    end
+
+    %% Quality Gates
+    subgraph GATES ["🚧 Quality Gates"]
+        direction TB
+        GATE1["🚪 Ingestion Gate<br/>Source validation<br/>Schema compliance"]
+        GATE2["🚪 Cleaning Gate<br/>Missing values<br/>Outlier detection"]
+        GATE3["🚪 Transform Gate<br/>Business rules<br/>Dimensional lookup"]
+        GATE4["🚪 Loading Gate<br/>Constraint validation<br/>Transaction integrity"]
+    end
+
+    %% Quality Actions
+    subgraph ACTIONS ["⚡ Quality Actions"]
+        direction TB
+        PASS["✅ Quality PASS<br/>Continue processing<br/>Log success metrics"]
+        WARN["⚠️ Quality WARNING<br/>Log issues<br/>Apply corrections<br/>Continue with flags"]
+        FAIL["❌ Quality FAIL<br/>Stop processing<br/>Rollback transaction<br/>Generate alerts"]
+    end
+
+    %% Monitoring & Alerting
+    subgraph MONITORING ["📈 Quality Monitoring"]
+        direction TB
+        METRICS["📊 Quality Metrics<br/>Real-time scores<br/>Historical trends"]
+        ANOMALY["🔍 Anomaly Detection<br/>10%+ quality drop<br/>Statistical analysis"]
+        ALERTS["🚨 Alert Generation<br/>Multi-channel alerts<br/>Severity levels"]
+        REPORTS["📋 Quality Reports<br/>Daily summaries<br/>Compliance tracking"]
+    end
+
+    %% Quality Storage
+    subgraph STORAGE ["💾 Quality Storage"]
+        direction TB
+        QM_TABLE["📊 quality_metrics<br/>Score history<br/>Trend analysis"]
+        ALERT_TABLE["🚨 quality_alerts<br/>Alert history<br/>Resolution tracking"]
+        LINEAGE_TABLE["🔗 data_lineage<br/>Quality impact<br/>Root cause analysis"]
+    end
+
+    %% Flow
+    BATCH --> GATE1
+    GATE1 --> COMPLETE
+    GATE1 --> VALID
+    
+    COMPLETE --> GATE2
+    VALID --> GATE2
+    GATE2 --> UNIQUE
+    GATE2 --> ACCURATE
+    
+    UNIQUE --> GATE3
+    ACCURATE --> GATE3
+    GATE3 --> CONSISTENT
+    
+    CONSISTENT --> GATE4
+    
+    GATE4 --> PASS
+    GATE4 --> WARN
+    GATE4 --> FAIL
+    
+    PASS --> METRICS
+    WARN --> METRICS
+    FAIL --> ANOMALY
+    
+    METRICS --> REPORTS
+    ANOMALY --> ALERTS
+    
+    METRICS --> QM_TABLE
+    ALERTS --> ALERT_TABLE
+    REPORTS --> LINEAGE_TABLE
+
+    %% Styling
+    classDef inputStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef dimensionStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef gateStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef actionStyle fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef monitorStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
+    classDef storageStyle fill:#f1f8e9,stroke:#689f38,stroke-width:2px,color:#000
+
+    class INPUT,BATCH inputStyle
+    class DIMENSIONS,COMPLETE,VALID,UNIQUE,ACCURATE,CONSISTENT dimensionStyle
+    class GATES,GATE1,GATE2,GATE3,GATE4 gateStyle
+    class ACTIONS,PASS,WARN,FAIL actionStyle
+    class MONITORING,METRICS,ANOMALY,ALERTS,REPORTS monitorStyle
+    class STORAGE,QM_TABLE,ALERT_TABLE,LINEAGE_TABLE storageStyle
+```
 ---
 
 ## 📁 **Project Structure**
